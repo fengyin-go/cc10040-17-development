@@ -24,6 +24,9 @@ class Store:
         self._query_log: list[dict[str, Any]] = []
         # Cohort snapshots
         self._cohort_snapshots: dict[str, list[dict[str, Any]]] = {}
+        # Cohort batch snapshots: 一次观察窗内多条分群的成员名单批次
+        self._cohort_batches: dict[str, dict[str, Any]] = {}
+        self._cohort_batch_seq = 0
         # Anomaly records
         self._anomaly_records: list[dict[str, Any]] = []
         # Recalc history
@@ -137,6 +140,36 @@ class Store:
 
     def get_cohort_snapshot(self, cohort_id: int) -> list[dict[str, Any]] | None:
         return self._cohort_snapshots.get(str(cohort_id))
+
+    # ── Cohort batch snapshot operations ──
+
+    def create_cohort_batch(self, observation_date: str,
+                            items: list[dict[str, Any]]) -> dict[str, Any]:
+        """登记一次观察窗的分群批次快照；批次号按观察日递增。"""
+        with self._lock:
+            self._cohort_batch_seq += 1
+            batch_id = f"B{observation_date.replace('-', '')}-{self._cohort_batch_seq:03d}"
+            batch = {
+                "batch_id": batch_id,
+                "观察日": observation_date,
+                "创建时间": time.strftime("%Y-%m-%d %H:%M:%S"),
+                "items": items,
+            }
+            self._cohort_batches[batch_id] = batch
+            return batch
+
+    def save_cohort_batch(self, batch: dict[str, Any]) -> None:
+        self._cohort_batches[str(batch.get("batch_id"))] = batch
+
+    def get_cohort_batch(self, batch_id: str) -> dict[str, Any] | None:
+        return self._cohort_batches.get(str(batch_id))
+
+    def list_cohort_batches(self) -> list[dict[str, Any]]:
+        return sorted(
+            self._cohort_batches.values(),
+            key=lambda batch: str(batch.get("创建时间", "")),
+            reverse=True,
+        )
 
     # ── Anomaly detection operations ──
 

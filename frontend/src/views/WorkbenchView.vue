@@ -86,6 +86,9 @@
       </form>
     </div>
 
+    <CohortBatchPanel v-if="meta.key === 'user_cohort'" :rows="rows" @refresh="reload" />
+    <SegmentCompareBatchPanel v-if="meta.key === 'segment_compare'" :rows="rows" @refresh="reload" />
+
     <footer class="page-foot">
       <span>共 {{ total }} 条{{ meta.name }}记录</span>
       <span v-if="errorMessage" class="error-text">{{ errorMessage }}</span>
@@ -104,6 +107,8 @@ import {
   runAction as applyAction,
 } from '@/api/backend-service'
 import type { EntryRow } from '@/data/types'
+import CohortBatchPanel from '@/views/CohortBatchPanel.vue'
+import SegmentCompareBatchPanel from '@/views/SegmentCompareBatchPanel.vue'
 
 const props = defineProps<{ moduleKey: string }>()
 const meta = moduleMeta(props.moduleKey)

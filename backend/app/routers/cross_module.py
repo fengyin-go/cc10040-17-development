@@ -190,6 +190,52 @@ def recompute_cohort(cohort_id: int):
     return svc.recompute_cohort(cohort_id)
 
 
+@router.post("/user-cohort/batch-recompute")
+def batch_recompute_cohorts(payload: dict):
+    """成员样本批量重算：一次提交多条分群，生成分群批次快照。
+
+    payload: cohort_ids 必填；observation_date 缺省取当天；
+    interrupt_cohort_id 用于演练某一项算到一半中断的场景。
+    """
+    svc = UserCohortService()
+    return svc.batch_recompute(
+        [int(cid) for cid in payload.get("cohort_ids", [])],
+        observation_date=payload.get("observation_date"),
+        interrupt_cohort_id=payload.get("interrupt_cohort_id"),
+    )
+
+
+@router.get("/user-cohort/batches")
+def list_cohort_batches():
+    """列出全部分群批次快照"""
+    svc = UserCohortService()
+    return {"items": svc.list_batches()}
+
+
+@router.get("/user-cohort/batches/{batch_id}")
+def get_cohort_batch(batch_id: str):
+    """查看分群批次快照：各项状态与当前可用性"""
+    svc = UserCohortService()
+    result = svc.get_batch_snapshot(batch_id)
+    if result is None:
+        return {"error": f"分群批次快照 {batch_id} 不存在"}
+    return result
+
+
+@router.post("/user-cohort/batches/{batch_id}/rerun")
+def rerun_cohort_batch(batch_id: str):
+    """补跑批次：只更正本观察窗内未完成的项目"""
+    svc = UserCohortService()
+    return svc.rerun_batch(batch_id)
+
+
+@router.get("/user-cohort/batches/{batch_id}/cohorts/{cohort_id}")
+def get_batch_cohort_members(batch_id: str, cohort_id: int):
+    """单群数据核对：查看批次内某分群已确认的名单"""
+    svc = UserCohortService()
+    return svc.get_batch_cohort_members(batch_id, cohort_id)
+
+
 @router.get("/user-cohort/{cohort_id}/detail")
 def get_cohort_detail(cohort_id: int):
     """获取分群详细信息"""
@@ -209,6 +255,13 @@ def execute_segment_compare(task_id: int):
     """执行分群对比分析"""
     svc = SegmentCompareService()
     return svc.execute_compare(task_id)
+
+
+@router.post("/segment-compare/{task_id}/execute-by-batch")
+def execute_segment_compare_by_batch(task_id: int, payload: dict):
+    """按分群批次快照执行对比：查找同一观察窗已确认的名单"""
+    svc = SegmentCompareService()
+    return svc.execute_compare_by_batch(task_id, str(payload.get("batch_id", "")))
 
 
 @router.get("/segment-compare/{task_id}/insights")
